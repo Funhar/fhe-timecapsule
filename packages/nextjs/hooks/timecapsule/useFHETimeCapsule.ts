@@ -14,6 +14,7 @@ import type { AllowedChainIds } from "~~/utils/helper/networks";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const BYTES_PER_CHUNK = 32;
+const yieldToBrowser = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 type CapsuleStatus = "active" | "pending" | "expired" | "unlocked" | "cancelled";
 
@@ -447,6 +448,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
 
     resetMessages();
     setIsLoading(true);
+    window.dispatchEvent(new CustomEvent("fhe-capsule-loading", { detail: { startedAt: Date.now() } }));
     try {
       const [ownCapsules, allCapsulesList, stats] = await Promise.all([
         fetchOwnCapsules(),
@@ -462,6 +464,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setIsLoading(false);
+      window.dispatchEvent(new CustomEvent("fhe-capsule-loading", { detail: { finishedAt: Date.now() } }));
     }
   }, [fetchAllCapsules, fetchOwnCapsules, hasContract, loadStatistics, resetMessages]);
 
@@ -572,6 +575,8 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
         return undefined;
       }
 
+      await yieldToBrowser();
+
       resetMessages();
       setIsSubmitting(true);
 
@@ -608,11 +613,14 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
               return undefined;
             }
 
+            await yieldToBrowser();
+
             const encryptedHandles: `0x${string}`[] = [];
             const encryptedProofs: `0x${string}`[] = [];
 
             for (let index = 0; index < messageChunks.length; index++) {
               const chunk = messageChunks[index];
+              await yieldToBrowser();
               setStatusMessage(`Encrypting message chunk ${index + 1}/${messageChunks.length}...`);
               const encryptedChunk = await encryptWith(builder => builder.add256(chunk));
               if (!encryptedChunk) {

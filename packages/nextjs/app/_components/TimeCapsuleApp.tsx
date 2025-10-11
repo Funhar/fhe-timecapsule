@@ -43,6 +43,7 @@ export const TimeCapsuleApp = () => {
   const [unlockDate, setUnlockDate] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"mine" | "community">("mine");
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
 
   const {
     capsules,
@@ -64,6 +65,8 @@ export const TimeCapsuleApp = () => {
     openCapsule,
     decryptCapsule,
   } = useFHETimeCapsule();
+
+  const isActuallySubmitting = isSubmitting || isFormSubmitting;
 
   const hasCapsules = useMemo(() => capsules.length > 0, [capsules]);
   const otherCapsules = useMemo(() => allCapsules.filter(capsule => !capsule.isOwn), [allCapsules]);
@@ -96,12 +99,12 @@ export const TimeCapsuleApp = () => {
   );
 
   const creationHint = useMemo(() => {
-    if (isSubmitting) return "Encrypting and submitting capsule...";
+    if (isActuallySubmitting) return "Encrypting and submitting capsule...";
     if (fheStatus === "loading") return "Initialising FHE relayer...";
     if (fheStatus === "error") return "FHE relayer unavailable. Reconnect your wallet or refresh.";
     if (!canEncrypt) return "Waiting for FHE relayer permissions...";
     return "Write your note and choose a time—you're all set.";
-  }, [canEncrypt, fheStatus, isSubmitting]);
+  }, [canEncrypt, fheStatus, isActuallySubmitting]);
 
   const handleCreateCapsule = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -123,10 +126,20 @@ export const TimeCapsuleApp = () => {
       return;
     }
 
-    const result = await createCapsule(message, unlockTimestamp);
-    if (result?.txHash) {
-      setMessage("");
-      setUnlockDate("");
+    setIsFormSubmitting(true);
+    try {
+      await new Promise<void>(resolve => {
+        // Yield control so button state updates before heavy async work
+        requestAnimationFrame(() => resolve());
+      });
+
+      const result = await createCapsule(message, unlockTimestamp);
+      if (result?.txHash) {
+        setMessage("");
+        setUnlockDate("");
+      }
+    } finally {
+      setIsFormSubmitting(false);
     }
   };
 
@@ -209,7 +222,7 @@ export const TimeCapsuleApp = () => {
                   placeholder="What would your future self—or your teammates—need to hear?"
                   value={message}
                   onChange={event => setMessage(event.target.value)}
-                  disabled={!canCreate || isSubmitting}
+                  disabled={!canCreate || isActuallySubmitting}
                   required
                 />
               </div>
@@ -226,7 +239,7 @@ export const TimeCapsuleApp = () => {
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white shadow-inner transition focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                   value={unlockDate}
                   onChange={event => setUnlockDate(event.target.value)}
-                  disabled={!canCreate || isSubmitting}
+                  disabled={!canCreate || isActuallySubmitting}
                   required
                 />
                 <p className="text-[11px] text-slate-400">
@@ -252,9 +265,18 @@ export const TimeCapsuleApp = () => {
               <button
                 type="submit"
                 className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-900 shadow-lg transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!canCreate || isSubmitting}
+                disabled={!canCreate || isActuallySubmitting}
+                aria-busy={isActuallySubmitting}
+                aria-live="polite"
               >
-                {isSubmitting ? "Sending..." : "Send Capsule"}
+                {isActuallySubmitting ? (
+                  <>
+                    <span className="inline-flex h-3 w-3 animate-spin rounded-full border-[2px] border-slate-900 border-t-transparent" />
+                    <span>Encrypting…</span>
+                  </>
+                ) : (
+                  "Send Capsule"
+                )}
               </button>
             </div>
           </form>
@@ -295,7 +317,7 @@ export const TimeCapsuleApp = () => {
                 {capsules.map(capsule => {
                   const showDecrypt = capsule.allowDecrypt && !capsule.decryptedMessage;
                   const decryptDisabled =
-                    !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isSubmitting;
+                    !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isActuallySubmitting;
                   const decryptAction = showDecrypt ? (
                     <ActionButton
                       key={`decrypt-${capsule.id}`}
@@ -327,14 +349,14 @@ export const TimeCapsuleApp = () => {
                           key={`cancel-${capsule.id}`}
                           label="Cancel"
                           onClick={() => void cancelCapsule(capsule.id)}
-                          disabled={!canMutateCapsule || isSubmitting || capsule.status !== "active"}
+                          disabled={!canMutateCapsule || isActuallySubmitting || capsule.status !== "active"}
                           tone="danger"
                         />
                         <ActionButton
                           key={`open-${capsule.id}`}
                           label="Open"
                           onClick={() => void openCapsule(capsule.id)}
-                          disabled={!canMutateCapsule || isSubmitting || capsule.status !== "expired"}
+                          disabled={!canMutateCapsule || isActuallySubmitting || capsule.status !== "expired"}
                           tone="primary"
                         />
                       </>
@@ -354,7 +376,7 @@ export const TimeCapsuleApp = () => {
               {otherCapsules.map(capsule => {
                 const showDecrypt = capsule.allowDecrypt && !capsule.decryptedMessage;
                 const decryptDisabled =
-                  !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isSubmitting;
+                  !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isActuallySubmitting;
                 const decryptAction = showDecrypt ? (
                   <ActionButton
                     key={`decrypt-${capsule.id}`}
