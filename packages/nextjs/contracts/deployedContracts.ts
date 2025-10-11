@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/helper/contract";
 const deployedContracts = {
   11155111: {
     FHETimeCapsule: {
-      address: "0x6588cd2Fa1A83d719b9f958AEb03d0868b570C39",
+      address: "0x3EC8F07CE3D2E4F1876DFE4F361eA79007FE7B8e",
       abi: [
         {
           anonymous: false,
@@ -388,7 +388,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 9389180,
+      deployedOnBlock: 9390328,
     },
   },
 } as const;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useWatchContractEvent } from "wagmi";
 import { ethers } from "ethers";
 import type { InterfaceAbi } from "ethers";
@@ -232,6 +232,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const autoDecryptRequestedRef = useRef<Set<number>>(new Set());
 
   const { canDecrypt, decrypt, isDecrypting, message: decryptStatusMessage, results: decryptResults, error: decryptError } =
     useFHEDecrypt({
@@ -509,14 +510,13 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   });
 
   const requestDecryptCapsule = useCallback(
-    (capsuleId: number) => {
+    (capsuleId: number, options: { skipLockCheck?: boolean } = {}) => {
       if (!contractAddress) {
         setErrorMessage("Contract address unavailable for decryption.");
         return false;
       }
       if (!canDecrypt) {
-        setErrorMessage("FHE relayer is not ready. Please wait before decrypting.");
-        return false;
+        setStatusMessage("Waiting for FHE relayer to initialise before decrypting...");
       }
       if (isDecrypting) {
         setStatusMessage("A decryption request is already in progress.");
@@ -528,7 +528,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
         setErrorMessage("Capsule not found.");
         return false;
       }
-      if (!capsule.allowDecrypt) {
+      if (!capsule.allowDecrypt && !options.skipLockCheck) {
         setErrorMessage("Capsule is still locked on-chain.");
         return false;
       }
@@ -550,7 +550,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       setHandledDecryptKey("");
       setActiveDecryptCapsuleId(capsuleId);
       updateCapsulePartial(capsuleId, { pendingManualDecrypt: true });
-      setStatusMessage("Preparing capsule decryption request...");
+      setStatusMessage(canDecrypt ? "Preparing capsule decryption request..." : "Queued until FHE relayer is ready.");
       return true;
     },
     [
@@ -561,6 +561,39 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       updateCapsulePartial,
     ],
   );
+
+  useEffect(() => {
+    const activeIds = new Set<number>();
+    const evaluateCapsules = (list: readonly CapsuleDetails[]) => {
+      for (const capsule of list) {
+        activeIds.add(capsule.id);
+        if (!capsule.isOwn) continue;
+        if (!capsule.allowDecrypt) {
+          autoDecryptRequestedRef.current.delete(capsule.id);
+          continue;
+        }
+        if (capsule.decryptedMessage || capsule.pendingManualDecrypt) {
+          continue;
+        }
+        if (!autoDecryptRequestedRef.current.has(capsule.id)) {
+          autoDecryptRequestedRef.current.add(capsule.id);
+          const scheduled = requestDecryptCapsule(capsule.id, { skipLockCheck: true });
+          if (!scheduled) {
+            autoDecryptRequestedRef.current.delete(capsule.id);
+          }
+        }
+      }
+    };
+
+    evaluateCapsules(capsules);
+    evaluateCapsules(allCapsules);
+
+    for (const requestedId of Array.from(autoDecryptRequestedRef.current)) {
+      if (!activeIds.has(requestedId)) {
+        autoDecryptRequestedRef.current.delete(requestedId);
+      }
+    }
+  }, [allCapsules, capsules, requestDecryptCapsule]);
 
   const executeWrite = useCallback(
     async (action: WriteAction): Promise<WriteResult | undefined> => {
@@ -698,13 +731,24 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
 
   const openCapsule = useCallback(
     async (capsuleId: number) => {
+      const existingCapsule = getCapsuleById(capsuleId);
       const result = await executeWrite({ type: "open", capsuleId });
       if (result?.txHash) {
+        if (existingCapsule) {
+          updateCapsulePartial(capsuleId, {
+            isUnlocked: true,
+            isActive: false,
+            allowDecrypt: true,
+            status: "unlocked",
+            pendingManualDecrypt: true,
+          });
+        }
         await refreshCapsules();
+        requestDecryptCapsule(capsuleId, { skipLockCheck: true });
       }
       return result;
     },
-    [executeWrite, refreshCapsules],
+    [executeWrite, getCapsuleById, refreshCapsules, requestDecryptCapsule, updateCapsulePartial],
   );
 
   useEffect(() => {
@@ -727,6 +771,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     if (!decryptError) return;
     setErrorMessage(decryptError);
     if (activeDecryptCapsuleId !== null) {
+      autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
       updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
       setActiveDecryptCapsuleId(null);
     }
@@ -757,6 +802,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
 
     const capsule = getCapsuleById(activeDecryptCapsuleId);
     if (!capsule) {
+      autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
       updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
       setActiveDecryptCapsuleId(null);
       setDecryptRequests([]);
@@ -776,6 +822,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       setErrorMessage("Failed to decrypt capsule message.");
     }
 
+    autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
     setActiveDecryptCapsuleId(null);
     setDecryptRequests([]);
     setHandledDecryptKey("");

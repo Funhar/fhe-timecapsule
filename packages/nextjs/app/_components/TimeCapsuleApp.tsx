@@ -494,13 +494,13 @@ const CapsuleCard = ({
 
   const messagePreview = truncatedMessage
     ? truncatedMessage
-    : capsule.allowDecrypt
-      ? capsule.pendingManualDecrypt || isDecrypting
-        ? "Decrypting ciphertext…"
-        : canDecrypt
-          ? "Ready to decrypt"
-          : "FHE setup required"
-      : "Encrypted capsule";
+    : capsule.decryptedMessage
+      ? capsule.decryptedMessage
+      : capsule.allowDecrypt
+        ? capsule.pendingManualDecrypt || isDecrypting
+          ? "Decrypting ciphertext…"
+          : "Encrypted note ready for decryption"
+        : "Encrypted capsule";
   const statusBadgeClass = statusStyles[capsule.status] ?? statusStyles.pending;
   const statusLabel = statusLabels[capsule.status] ?? statusLabels.pending;
   const creatorDisplay = capsule.isOwn ? "Sen" : capsule.creator;
@@ -509,13 +509,13 @@ const CapsuleCard = ({
   const remainingChunks = capsule.handles.message.length - Math.min(capsule.handles.message.length, 4);
   const encryptedFooter = remainingChunks > 0 ? `\n...and ${remainingChunks} more chunk(s)` : "";
   const decryptAccessLabel = capsule.decryptedMessage
-    ? "Decrypted"
+    ? "Message decrypted"
     : capsule.allowDecrypt
       ? capsule.pendingManualDecrypt || isDecrypting
         ? "Decrypting…"
         : canDecrypt
           ? "Ready to decrypt"
-          : "FHE setup required"
+          : "Encrypted payload available"
       : "Locked";
 
   return (
