@@ -11,15 +11,8 @@ export type BaseConfig = {
 
 export type ScaffoldConfig = BaseConfig;
 
-const rawAlchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
-if (!rawAlchemyKey) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Environment variable NEXT_PUBLIC_ALCHEMY_API_KEY is required in production.");
-  } else {
-    // eslint-disable-next-line no-console
-    console.warn("NEXT_PUBLIC_ALCHEMY_API_KEY is not set. Falling back to public RPCs.");
-  }
-}
+const rawAlchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+// NEXT_PUBLIC_ALCHEMY_API_KEY is optional - fallback to public RPCs if not provided
 
 const defaultSepoliaRpc =
   process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ??
