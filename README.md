@@ -29,19 +29,91 @@ FHE Time Capsule is a revolutionary decentralized application that combines **Fu
 The heart of the application is a sophisticated Solidity smart contract that leverages **FHEVM** technology:
 
 ```solidity
-// Core contract features
-- Encrypted message storage with chunked data handling
-- Time-based unlock mechanisms with plaintext scheduling
-- FHE permission management for controlled decryption
-- Multi-user capsule management and access control
-- Comprehensive event logging for transparency
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {
+    FHE,
+    ebool,
+    eaddress,
+    euint64,
+    euint256,
+    externalEuint64,
+    externalEuint256
+} from "@fhevm/solidity/lib/FHE.sol";
+import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+
+contract FHETimeCapsule is SepoliaConfig {
+    struct TimeCapsule {
+        euint256[] encryptedMessage;    // FHE encrypted message chunks
+        euint64 encryptedUnlockTime;    // FHE encrypted unlock timestamp
+        ebool encryptedIsActive;        // FHE encrypted active state
+        ebool encryptedIsUnlocked;      // FHE encrypted unlock state
+        eaddress encryptedCreator;      // FHE encrypted creator address
+
+        address creator;                // Plaintext creator for access control
+        uint256 unlockTime;             // Plaintext unlock time for scheduling
+        bool isActive;                  // Plaintext active flag for gas efficiency
+        bool isUnlocked;                // Plaintext unlock flag for gas efficiency
+    }
+
+    // FHE-powered capsule creation with encrypted message chunks
+    function createTimeCapsule(
+        externalEuint256[] calldata encryptedMessageChunks,
+        bytes[] calldata messageProofs,
+        externalEuint64 encryptedUnlockTimeHandle,
+        bytes calldata unlockTimeProof,
+        uint256 unlockTime
+    ) external returns (uint256 capsuleId) {
+        // Store encrypted message chunks using FHE
+        for (uint256 i = 0; i < encryptedMessageChunks.length; i++) {
+            euint256 chunk = FHE.fromExternal(encryptedMessageChunks[i], messageProofs[i]);
+            FHE.allowThis(chunk);
+            capsule.encryptedMessage.push(chunk);
+        }
+
+        // Set encrypted unlock time with FHE verification
+        capsule.encryptedUnlockTime = FHE.fromExternal(encryptedUnlockTimeHandle, unlockTimeProof);
+        FHE.allowThis(capsule.encryptedUnlockTime);
+
+        // Dual state management: plaintext for gas efficiency, encrypted for security
+        capsule.unlockTime = unlockTime;
+        capsule.isActive = true;
+        capsule.encryptedIsActive = FHE.asEbool(true);
+        FHE.allowThis(capsule.encryptedIsActive);
+    }
+
+    // Time-locked decryption with FHE permission system
+    function openTimeCapsule(uint256 capsuleId) external {
+        TimeCapsule storage capsule = timeCapsules[capsuleId];
+        require(block.timestamp >= capsule.unlockTime, "Unlock time not reached");
+
+        // Grant FHE decryption permissions to authorized users
+        _allowCapsuleTo(capsuleId, msg.sender);
+        capsule.isUnlocked = true;
+        capsule.encryptedIsUnlocked = FHE.asEbool(true);
+    }
+
+    // FHE permission management for controlled access
+    function _allowCapsuleTo(uint256 capsuleId, address recipient) internal {
+        TimeCapsule storage capsule = timeCapsules[capsuleId];
+
+        // Grant FHE decryption permissions for all encrypted fields
+        FHE.allow(capsule.encryptedMessage, recipient);
+        FHE.allow(capsule.encryptedUnlockTime, recipient);
+        FHE.allow(capsule.encryptedIsActive, recipient);
+        FHE.allow(capsule.encryptedIsUnlocked, recipient);
+        FHE.allow(capsule.encryptedCreator, recipient);
+    }
+}
 ```
 
-**Key Capabilities:**
-- **Encrypted Storage**: Messages stored as encrypted chunks using `euint256[]`
-- **Dual State Management**: Both plaintext (for scheduling) and encrypted (for security) state tracking
-- **Permission-Based Decryption**: Granular access control using FHE permissions
-- **Batch Operations**: Efficient handling of large messages through chunking
+**Key FHE Capabilities:**
+- **🔐 Encrypted Storage**: Messages stored as `euint256[]` chunks using FHE
+- **⏰ Dual State Management**: Plaintext for gas efficiency, encrypted for security
+- **🔑 Permission-Based Decryption**: Granular FHE access control with `FHE.allow()`
+- **⚡ Homomorphic Operations**: Smart contract processes ciphertexts without decryption
+- **🛡️ Zero-Knowledge Security**: Cryptographic proofs verify operations without revealing data
 
 ### Frontend Application
 
