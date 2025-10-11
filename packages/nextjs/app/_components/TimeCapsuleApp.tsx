@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
 import { type CapsuleDetails, useFHETimeCapsule } from "~~/hooks/timecapsule";
@@ -42,7 +42,7 @@ export const TimeCapsuleApp = () => {
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"mine" | "community">("mine");
+  const [activeTab, setActiveTab] = useState<"mine" | "community">(() => (isConnected ? "mine" : "community"));
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
 
   const {
@@ -69,6 +69,12 @@ export const TimeCapsuleApp = () => {
   const isActuallySubmitting = isSubmitting || isFormSubmitting;
   const MAX_MESSAGE_LENGTH = 255;
   const remainingCharacters = MAX_MESSAGE_LENGTH - message.length;
+
+  useEffect(() => {
+    if (!isConnected && activeTab !== "community") {
+      setActiveTab("community");
+    }
+  }, [activeTab, isConnected]);
 
   const hasCapsules = useMemo(() => capsules.length > 0, [capsules]);
   const otherCapsules = useMemo(() => allCapsules.filter(capsule => !capsule.isOwn), [allCapsules]);
@@ -145,25 +151,6 @@ export const TimeCapsuleApp = () => {
     }
   };
 
-  if (!isConnected) {
-    return (
-      <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white shadow-xl rounded-3xl px-8 py-12 text-center space-y-6">
-          <div className="flex justify-center">
-            <span className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-slate-900/10 text-3xl">
-              ⏳
-            </span>
-          </div>
-          <h2 className="text-3xl font-semibold text-slate-900">Welcome to FHE Time Capsule</h2>
-          <p className="text-slate-600">Connect your wallet to create and manage encrypted capsules.</p>
-          <div className="flex justify-center">
-            <RainbowKitCustomConnectButton />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#05060A] text-slate-100">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8">
@@ -187,6 +174,17 @@ export const TimeCapsuleApp = () => {
               <FeaturePill icon="🤝" label="Community capsules" />
             </div>
           </div>
+          {!isConnected ? (
+            <div className="mt-6 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-slate-200">
+              <p>
+                Discover public capsules below. Want to drop your own encrypted note? Connect your wallet to create a
+                capsule.
+              </p>
+              <div className="mt-3 flex gap-3">
+                <RainbowKitCustomConnectButton />
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -202,96 +200,98 @@ export const TimeCapsuleApp = () => {
           ))}
         </section>
 
-        <section id="create" className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 shadow-xl backdrop-blur">
-          <div className="border-b border-white/10 pb-4">
-            <h2 className="text-lg font-semibold text-white">Create a new capsule</h2>
+        {isConnected ? (
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 shadow-xl backdrop-blur">
+            <div className="border-b border-white/10 pb-4">
+              <h2 className="text-lg font-semibold text-white">Create a new capsule</h2>
             <p className="mt-2 text-sm text-slate-400">
               Your note is encrypted on-chain; choose a future unlock time so it only becomes readable when you decide.
             </p>
           </div>
           <form className="pt-5" onSubmit={handleCreateCapsule}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2 space-y-2">
-                <label
-                  htmlFor="capsuleMessage"
-                  className="text-[11px] font-semibold uppercase tracking-wide text-slate-300"
-                >
-                  Message
-                </label>
-                <textarea
-                  id="capsuleMessage"
-                  className="w-full min-h-[110px] rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white shadow-inner transition focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  placeholder="What would your future self—or your teammates—need to hear?"
-                  value={message}
-                  onChange={event => setMessage(event.target.value)}
-                  disabled={!canCreate || isActuallySubmitting}
-                  maxLength={MAX_MESSAGE_LENGTH}
-                  required
-                />
-                <div className="rounded-lg border border-amber-400/70 bg-amber-500/15 px-3 py-2 text-[11px] text-amber-100">
-                  <div className="flex items-center justify-between">
-                    <span>Longer messages take more time to encrypt. Keep it concise for faster submission.</span>
-                    <span className={remainingCharacters < 0 ? "text-rose-200 font-semibold" : "text-amber-200"}>
-                      {remainingCharacters >= 0 ? `${remainingCharacters} left` : `${-remainingCharacters} over`}
-                    </span>
+                <div className="sm:col-span-2 space-y-2">
+                  <label
+                    htmlFor="capsuleMessage"
+                    className="text-[11px] font-semibold uppercase tracking-wide text-slate-300"
+                  >
+                    Message
+                  </label>
+                  <textarea
+                    id="capsuleMessage"
+                    className="w-full min-h-[110px] rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white shadow-inner transition focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    placeholder="What would your future self—or your teammates—need to hear?"
+                    value={message}
+                    onChange={event => setMessage(event.target.value)}
+                    disabled={!canCreate || isActuallySubmitting}
+                    maxLength={MAX_MESSAGE_LENGTH}
+                    required
+                  />
+                  <div className="rounded-lg border border-amber-400/70 bg-amber-500/15 px-3 py-2 text-[11px] text-amber-100">
+                    <div className="flex items-center justify-between">
+                      <span>Longer messages take more time to encrypt. Keep it concise for faster submission.</span>
+                      <span className={remainingCharacters < 0 ? "text-rose-200 font-semibold" : "text-amber-200"}>
+                        {remainingCharacters >= 0 ? `${remainingCharacters} left` : `${-remainingCharacters} over`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="unlockDate"
+                    className="text-[11px] font-semibold uppercase tracking-wide text-slate-300"
+                  >
+                    Unlock Time
+                  </label>
+                  <input
+                    id="unlockDate"
+                    type="datetime-local"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white shadow-inner transition focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    value={unlockDate}
+                    onChange={event => setUnlockDate(event.target.value)}
+                    disabled={!canCreate || isActuallySubmitting}
+                    required
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Block latency can add a few seconds of drift, but your encrypted payload remains safe.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Status</label>
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
+                    {creationHint}
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="unlockDate"
-                  className="text-[11px] font-semibold uppercase tracking-wide text-slate-300"
-                >
-                  Unlock Time
-                </label>
-                <input
-                  id="unlockDate"
-                  type="datetime-local"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white shadow-inner transition focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  value={unlockDate}
-                  onChange={event => setUnlockDate(event.target.value)}
+
+              <div className="mt-4 space-y-2">
+                {formError && <Alert tone="error" message={formError} />}
+                {errorMessage && <Alert tone="error" message={errorMessage} />}
+                {statusMessage && <Alert tone="info" message={statusMessage} />}
+                {decryptStatusMessage && <Alert tone="info" message={decryptStatusMessage} />}
+              </div>
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-900 shadow-lg transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={!canCreate || isActuallySubmitting}
-                  required
-                />
-                <p className="text-[11px] text-slate-400">
-                  Block latency can add a few seconds of drift, but your encrypted payload remains safe.
-                </p>
+                  aria-busy={isActuallySubmitting}
+                  aria-live="polite"
+                >
+                  {isActuallySubmitting ? (
+                    <>
+                      <span className="inline-flex h-3 w-3 animate-spin rounded-full border-[2px] border-slate-900 border-t-transparent" />
+                      <span>Encrypting…</span>
+                    </>
+                  ) : (
+                    "Send Capsule"
+                  )}
+                </button>
               </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Status</label>
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-                  {creationHint}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {formError && <Alert tone="error" message={formError} />}
-              {errorMessage && <Alert tone="error" message={errorMessage} />}
-              {statusMessage && <Alert tone="info" message={statusMessage} />}
-              {decryptStatusMessage && <Alert tone="info" message={decryptStatusMessage} />}
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-900 shadow-lg transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!canCreate || isActuallySubmitting}
-                aria-busy={isActuallySubmitting}
-                aria-live="polite"
-              >
-                {isActuallySubmitting ? (
-                  <>
-                    <span className="inline-flex h-3 w-3 animate-spin rounded-full border-[2px] border-slate-900 border-t-transparent" />
-                    <span>Encrypting…</span>
-                  </>
-                ) : (
-                  "Send Capsule"
-                )}
-              </button>
-            </div>
-          </form>
-        </section>
+            </form>
+          </section>
+        ) : null}
 
         <section id="capsules" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -299,8 +299,11 @@ export const TimeCapsuleApp = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab("mine")}
-                className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded-full transition ${
-                  activeTab === "mine" ? "bg-white text-slate-900 shadow" : "text-slate-300 hover:text-white"
+                disabled={!isConnected}
+                className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  activeTab === "mine"
+                    ? "bg-white text-slate-900 shadow"
+                    : "text-slate-300 hover:text-white"
                 }`}
               >
                 My Capsules
@@ -316,7 +319,11 @@ export const TimeCapsuleApp = () => {
               </button>
             </div>
             <span className="text-sm text-slate-400">
-              {activeTab === "mine" ? `${capsules.length} entries` : `${otherCapsules.length} entries`}
+              {activeTab === "mine"
+                ? isConnected
+                  ? `${capsules.length} entries`
+                  : "Connect your wallet to view personal capsules"
+                : `${otherCapsules.length} entries`}
             </span>
           </div>
 
@@ -329,16 +336,10 @@ export const TimeCapsuleApp = () => {
                   const showDecrypt = capsule.allowDecrypt && !capsule.decryptedMessage;
                   const decryptDisabled =
                     !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isActuallySubmitting;
-                  const decryptAction = showDecrypt ? (
+                  const decryptAction = showDecrypt && canDecrypt ? (
                     <ActionButton
                       key={`decrypt-${capsule.id}`}
-                      label={
-                        capsule.pendingManualDecrypt || isDecrypting
-                          ? "Decrypting..."
-                          : canDecrypt
-                            ? "Decrypt"
-                            : "Decrypt (Unavailable)"
-                      }
+                      label={capsule.pendingManualDecrypt || isDecrypting ? "Decrypting..." : "Decrypt"}
                       onClick={() => {
                         void decryptCapsule(capsule.id);
                       }}
@@ -388,16 +389,10 @@ export const TimeCapsuleApp = () => {
                 const showDecrypt = capsule.allowDecrypt && !capsule.decryptedMessage;
                 const decryptDisabled =
                   !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isActuallySubmitting;
-                const decryptAction = showDecrypt ? (
+                const decryptAction = showDecrypt && canDecrypt ? (
                   <ActionButton
                     key={`decrypt-${capsule.id}`}
-                    label={
-                      capsule.pendingManualDecrypt || isDecrypting
-                        ? "Decrypting..."
-                        : canDecrypt
-                          ? "Decrypt"
-                          : "Decrypt (Unavailable)"
-                    }
+                    label={capsule.pendingManualDecrypt || isDecrypting ? "Decrypting..." : "Decrypt"}
                     onClick={() => {
                       void decryptCapsule(capsule.id);
                     }}
