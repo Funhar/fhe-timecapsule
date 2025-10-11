@@ -38,6 +38,7 @@ export type CapsuleDetails = {
   status: CapsuleStatus;
   isOwn: boolean;
   allowDecrypt: boolean;
+  pendingManualDecrypt: boolean;
   handles: CapsuleHandles;
 };
 
@@ -225,6 +226,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     return JSON.stringify(sorted);
   }, [decryptRequests]);
   const [handledDecryptKey, setHandledDecryptKey] = useState<string>("");
+  const [activeDecryptCapsuleId, setActiveDecryptCapsuleId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
@@ -268,6 +270,19 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     if (capsule.isExpired) return "expired";
     return "active";
   }, []);
+
+  const updateCapsulePartial = useCallback((capsuleId: number, partial: Partial<CapsuleDetails>) => {
+    setCapsules(prev => prev.map(capsule => (capsule.id === capsuleId ? { ...capsule, ...partial } : capsule)));
+    setAllCapsules(prev => prev.map(capsule => (capsule.id === capsuleId ? { ...capsule, ...partial } : capsule)));
+  }, []);
+
+  const getCapsuleById = useCallback(
+    (capsuleId: number) => {
+      const combined = [...capsules, ...allCapsules];
+      return combined.find(capsule => capsule.id === capsuleId);
+    },
+    [allCapsules, capsules],
+  );
 
   const normalizeCapsule = useCallback(
     (
@@ -313,6 +328,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
         status: "pending",
         isOwn,
         allowDecrypt,
+        pendingManualDecrypt: false,
         handles,
       };
 
@@ -426,38 +442,6 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     setStatistics(stats);
   }, [loadStatistics]);
 
-  const prepareDecryptRequests = useCallback(
-    (capsuleList: CapsuleDetails[]) => {
-      if (!contractAddress) {
-        setDecryptRequests([]);
-        return;
-      }
-
-      const requests: DecryptRequest[] = [];
-      const processedCapsules = new Set<number>();
-      const seenHandles = new Set<string>();
-
-      for (const capsule of capsuleList) {
-        if (processedCapsules.has(capsule.id)) continue;
-        processedCapsules.add(capsule.id);
-
-        if (!capsule.allowDecrypt) continue;
-
-        capsule.handles.message.forEach(handle => {
-          const key = handle.toLowerCase();
-
-          if (!seenHandles.has(key)) {
-            seenHandles.add(key);
-            requests.push({ handle, contractAddress });
-          }
-        });
-      }
-
-      setDecryptRequests(requests);
-    },
-    [contractAddress],
-  );
-
   const refreshCapsules = useCallback(async () => {
     if (!hasContract) return;
 
@@ -473,14 +457,13 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       setCapsules(ownCapsules);
       setAllCapsules(allCapsulesList);
       setStatistics(stats);
-      prepareDecryptRequests([...ownCapsules, ...allCapsulesList]);
     } catch (error) {
       console.error("Failed to refresh capsules", error);
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setIsLoading(false);
     }
-  }, [fetchAllCapsules, fetchOwnCapsules, hasContract, loadStatistics, prepareDecryptRequests, resetMessages]);
+  }, [fetchAllCapsules, fetchOwnCapsules, hasContract, loadStatistics, resetMessages]);
 
   useWatchContractEvent({
     address: hasContract ? (contractInfo!.address as `0x${string}`) : undefined,
@@ -521,6 +504,60 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     },
     enabled: Boolean(hasContract),
   });
+
+  const requestDecryptCapsule = useCallback(
+    (capsuleId: number) => {
+      if (!contractAddress) {
+        setErrorMessage("Contract address unavailable for decryption.");
+        return false;
+      }
+      if (!canDecrypt) {
+        setErrorMessage("FHE relayer is not ready. Please wait before decrypting.");
+        return false;
+      }
+      if (isDecrypting) {
+        setStatusMessage("A decryption request is already in progress.");
+        return false;
+      }
+
+      const capsule = getCapsuleById(capsuleId);
+      if (!capsule) {
+        setErrorMessage("Capsule not found.");
+        return false;
+      }
+      if (!capsule.allowDecrypt) {
+        setErrorMessage("Capsule is still locked on-chain.");
+        return false;
+      }
+      if (capsule.decryptedMessage) {
+        setStatusMessage("Capsule already decrypted.");
+        return false;
+      }
+      if (capsule.pendingManualDecrypt) {
+        setStatusMessage("Capsule decryption is already queued.");
+        return false;
+      }
+      if (!capsule.handles.message.length) {
+        setErrorMessage("No encrypted message chunks available to decrypt.");
+        return false;
+      }
+
+      const requests = capsule.handles.message.map(handle => ({ handle, contractAddress }));
+      setDecryptRequests(requests);
+      setHandledDecryptKey("");
+      setActiveDecryptCapsuleId(capsuleId);
+      updateCapsulePartial(capsuleId, { pendingManualDecrypt: true });
+      setStatusMessage("Preparing capsule decryption request...");
+      return true;
+    },
+    [
+      contractAddress,
+      canDecrypt,
+      getCapsuleById,
+      isDecrypting,
+      updateCapsulePartial,
+    ],
+  );
 
   const executeWrite = useCallback(
     async (action: WriteAction): Promise<WriteResult | undefined> => {
@@ -679,10 +716,15 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   }, [canDecrypt, decrypt, decryptRequestsKey, handledDecryptKey, isDecrypting]);
 
   useEffect(() => {
-    if (decryptError) {
-      setErrorMessage(decryptError);
+    if (!decryptError) return;
+    setErrorMessage(decryptError);
+    if (activeDecryptCapsuleId !== null) {
+      updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
+      setActiveDecryptCapsuleId(null);
     }
-  }, [decryptError]);
+    setDecryptRequests([]);
+    setHandledDecryptKey("");
+  }, [activeDecryptCapsuleId, decryptError, updateCapsulePartial]);
 
   useEffect(() => {
     if (fheError) {
@@ -703,18 +745,38 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
 
   useEffect(() => {
     if (!normalizedDecryptResults || normalizedDecryptResults.size === 0) return;
+    if (activeDecryptCapsuleId === null) return;
 
-    const applyDecryptResults = (list: CapsuleDetails[]): CapsuleDetails[] =>
-      list.map(capsule => {
-        if (capsule.decryptedMessage || !capsule.allowDecrypt) return capsule;
-        const decoded = decodeMessageFromResults(capsule.handles.message, normalizedDecryptResults);
-        if (!decoded) return capsule;
-        return { ...capsule, decryptedMessage: decoded };
+    const capsule = getCapsuleById(activeDecryptCapsuleId);
+    if (!capsule) {
+      updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
+      setActiveDecryptCapsuleId(null);
+      setDecryptRequests([]);
+      setHandledDecryptKey("");
+      return;
+    }
+
+    const decoded = decodeMessageFromResults(capsule.handles.message, normalizedDecryptResults);
+    if (decoded) {
+      updateCapsulePartial(activeDecryptCapsuleId, {
+        decryptedMessage: decoded,
+        pendingManualDecrypt: false,
       });
+      setStatusMessage("Capsule decrypted.");
+    } else {
+      updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
+      setErrorMessage("Failed to decrypt capsule message.");
+    }
 
-    setCapsules(prev => applyDecryptResults(prev));
-    setAllCapsules(prev => applyDecryptResults(prev));
-  }, [normalizedDecryptResults]);
+    setActiveDecryptCapsuleId(null);
+    setDecryptRequests([]);
+    setHandledDecryptKey("");
+  }, [
+    activeDecryptCapsuleId,
+    getCapsuleById,
+    normalizedDecryptResults,
+    updateCapsulePartial,
+  ]);
 
   const canCreate = useMemo(
     () => Boolean(isConnected && hasSigner && hasContract && !isSubmitting && canEncrypt),
@@ -747,5 +809,6 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     createCapsule,
     cancelCapsule,
     openCapsule,
+    decryptCapsule: requestDecryptCapsule,
   } as const;
 };

@@ -62,6 +62,7 @@ export const TimeCapsuleApp = () => {
     createCapsule,
     cancelCapsule,
     openCapsule,
+    decryptCapsule,
   } = useFHETimeCapsule();
 
   const hasCapsules = useMemo(() => capsules.length > 0, [capsules]);
@@ -291,22 +292,55 @@ export const TimeCapsuleApp = () => {
           ) : activeTab === "mine" ? (
             hasCapsules ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                {capsules.map(capsule => (
-                  <CapsuleCard key={capsule.id} capsule={capsule} isDecrypting={isDecrypting} canDecrypt={canDecrypt}>
+                {capsules.map(capsule => {
+                  const showDecrypt = capsule.allowDecrypt && !capsule.decryptedMessage;
+                  const decryptDisabled =
+                    !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isSubmitting;
+                  const decryptAction = showDecrypt ? (
                     <ActionButton
-                      label="Cancel"
-                      onClick={() => void cancelCapsule(capsule.id)}
-                      disabled={!canMutateCapsule || isSubmitting || capsule.status !== "active"}
-                      tone="danger"
-                    />
-                    <ActionButton
-                      label="Open"
-                      onClick={() => void openCapsule(capsule.id)}
-                      disabled={!canMutateCapsule || isSubmitting || capsule.status !== "expired"}
+                      key={`decrypt-${capsule.id}`}
+                      label={
+                        capsule.pendingManualDecrypt || isDecrypting
+                          ? "Decrypting..."
+                          : canDecrypt
+                            ? "Decrypt"
+                            : "Decrypt (Unavailable)"
+                      }
+                      onClick={() => {
+                        void decryptCapsule(capsule.id);
+                      }}
+                      disabled={decryptDisabled}
                       tone="primary"
                     />
-                  </CapsuleCard>
-                ))}
+                  ) : null;
+
+                  return (
+                    <CapsuleCard
+                      key={capsule.id}
+                      capsule={capsule}
+                      isDecrypting={isDecrypting}
+                      canDecrypt={canDecrypt}
+                    >
+                      <>
+                        {decryptAction}
+                        <ActionButton
+                          key={`cancel-${capsule.id}`}
+                          label="Cancel"
+                          onClick={() => void cancelCapsule(capsule.id)}
+                          disabled={!canMutateCapsule || isSubmitting || capsule.status !== "active"}
+                          tone="danger"
+                        />
+                        <ActionButton
+                          key={`open-${capsule.id}`}
+                          label="Open"
+                          onClick={() => void openCapsule(capsule.id)}
+                          disabled={!canMutateCapsule || isSubmitting || capsule.status !== "expired"}
+                          tone="primary"
+                        />
+                      </>
+                    </CapsuleCard>
+                  );
+                })}
               </div>
             ) : (
               <EmptyState
@@ -317,14 +351,39 @@ export const TimeCapsuleApp = () => {
             )
           ) : hasOtherCapsules ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              {otherCapsules.map(capsule => (
-                <CapsuleCard
-                  key={`public-${capsule.id}`}
-                  capsule={capsule}
-                  isDecrypting={isDecrypting}
-                  canDecrypt={canDecrypt}
-                />
-              ))}
+              {otherCapsules.map(capsule => {
+                const showDecrypt = capsule.allowDecrypt && !capsule.decryptedMessage;
+                const decryptDisabled =
+                  !canDecrypt || isDecrypting || capsule.pendingManualDecrypt || isSubmitting;
+                const decryptAction = showDecrypt ? (
+                  <ActionButton
+                    key={`decrypt-${capsule.id}`}
+                    label={
+                      capsule.pendingManualDecrypt || isDecrypting
+                        ? "Decrypting..."
+                        : canDecrypt
+                          ? "Decrypt"
+                          : "Decrypt (Unavailable)"
+                    }
+                    onClick={() => {
+                      void decryptCapsule(capsule.id);
+                    }}
+                    disabled={decryptDisabled}
+                    tone="primary"
+                  />
+                ) : null;
+
+                return (
+                  <CapsuleCard
+                    key={`public-${capsule.id}`}
+                    capsule={capsule}
+                    isDecrypting={isDecrypting}
+                    canDecrypt={canDecrypt}
+                  >
+                    {decryptAction}
+                  </CapsuleCard>
+                );
+              })}
             </div>
           ) : (
             <EmptyState
@@ -408,11 +467,11 @@ const CapsuleCard = ({
   const messagePreview = truncatedMessage
     ? truncatedMessage
     : capsule.allowDecrypt
-      ? canDecrypt
-        ? isDecrypting
-          ? "Decrypting ciphertext…"
-          : "Awaiting FHE decryption"
-        : "Connect wallet to decrypt"
+      ? capsule.pendingManualDecrypt || isDecrypting
+        ? "Decrypting ciphertext…"
+        : canDecrypt
+          ? "Ready to decrypt"
+          : "FHE setup required"
       : "Encrypted capsule";
   const statusBadgeClass = statusStyles[capsule.status] ?? statusStyles.pending;
   const statusLabel = statusLabels[capsule.status] ?? statusLabels.pending;
@@ -423,12 +482,12 @@ const CapsuleCard = ({
   const encryptedFooter = remainingChunks > 0 ? `\n...and ${remainingChunks} more chunk(s)` : "";
   const decryptAccessLabel = capsule.allowDecrypt
     ? capsule.decryptedMessage
-      ? "Unlocked"
-      : isDecrypting
+      ? "Decrypted"
+      : capsule.pendingManualDecrypt || isDecrypting
         ? "Decrypting…"
         : canDecrypt
-          ? "Ready"
-          : "Awaiting FHE setup"
+          ? "Ready to decrypt"
+          : "FHE setup required"
     : "Locked";
 
   return (
