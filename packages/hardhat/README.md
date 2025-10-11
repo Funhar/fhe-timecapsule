@@ -70,7 +70,7 @@ For detailed instructions see:
 ```
 fhevm-hardhat-template/
 ├── contracts/           # Smart contract source files
-│   └── FHECounter.sol   # Example FHE counter contract
+│   └── FHETimeCapsule.sol   # Time capsule contract using FHE
 ├── deploy/              # Deployment scripts
 ├── tasks/               # Hardhat custom tasks
 ├── test/                # Test files
