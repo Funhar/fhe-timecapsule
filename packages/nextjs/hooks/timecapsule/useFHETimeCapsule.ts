@@ -5,11 +5,12 @@ import { useAccount, useWatchContractEvent } from "wagmi";
 import { ethers } from "ethers";
 import type { InterfaceAbi } from "ethers";
 import type { Abi } from "viem";
-import { useFhevm, useFHEDecrypt, useFHEEncryption, useInMemoryStorage } from "@fhevm-sdk";
+import { FhevmDecryptionSignature, useFhevm, useFHEDecrypt, useFHEEncryption } from "@fhevm-sdk";
 import { useDeployedContractInfo } from "../helper";
 import { useWagmiEthers } from "../wagmi/useWagmiEthers";
 import type { Contract } from "~~/utils/helper/contract";
 import type { AllowedChainIds } from "~~/utils/helper/networks";
+import { LocalStorageStringStorage } from "~~/utils/storage/LocalStorageStringStorage";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -174,7 +175,6 @@ const decodeMessageFromResults = (
 
 export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   const { initialMockChains } = params;
-  const { storage } = useInMemoryStorage();
   const { address: account } = useAccount();
 
   const { chainId, isConnected, ethersProvider, ethersReadonlyProvider, ethersSigner, eip1193Provider } =
@@ -233,15 +233,75 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const autoDecryptRequestedRef = useRef<Set<number>>(new Set());
+  const hasPrefetchedSignatureRef = useRef<boolean>(false);
+  const resolvedAccount = account?.toLowerCase();
+
+  const decryptSignatureStorage = useMemo(() => new LocalStorageStringStorage("fhevm-signature"), []);
 
   const { canDecrypt, decrypt, isDecrypting, message: decryptStatusMessage, results: decryptResults, error: decryptError } =
     useFHEDecrypt({
       instance,
       ethersSigner,
-      fhevmDecryptionSignatureStorage: storage,
+      fhevmDecryptionSignatureStorage: decryptSignatureStorage,
       chainId,
       requests: decryptRequests,
     });
+
+  const getDecryptedStorageKey = useCallback(
+    (capsuleId: number) => {
+      if (typeof window === "undefined") return undefined;
+      if (!contractAddress) return undefined;
+      if (!resolvedAccount) return undefined;
+
+      return [
+        "fhe-timecapsule",
+        "decrypted-message",
+        resolvedAccount,
+        chainId ?? "unknown-chain",
+        contractAddress,
+        capsuleId,
+      ].join(":");
+    },
+    [chainId, contractAddress, resolvedAccount],
+  );
+
+  const persistDecryptedMessage = useCallback(
+    (capsuleId: number, message: string | undefined) => {
+      const key = getDecryptedStorageKey(capsuleId);
+      if (!key) return;
+      try {
+        if (message) {
+          window.localStorage.setItem(key, message);
+        } else {
+          window.localStorage.removeItem(key);
+        }
+      } catch (error) {
+        console.warn("Failed to persist decrypted capsule message", error);
+      }
+    },
+    [getDecryptedStorageKey],
+  );
+
+  const restoreStoredDecryptedMessage = useCallback(
+    (capsule: CapsuleDetails) => {
+      const key = getDecryptedStorageKey(capsule.id);
+      if (!key) return capsule;
+      if (!capsule.allowDecrypt) {
+        persistDecryptedMessage(capsule.id, undefined);
+        return capsule;
+      }
+      try {
+        const stored = window.localStorage.getItem(key);
+        if (stored && stored.length > 0) {
+          return { ...capsule, decryptedMessage: stored };
+        }
+      } catch (error) {
+        console.warn("Failed to restore decrypted capsule message", error);
+      }
+      return capsule;
+    },
+    [getDecryptedStorageKey, persistDecryptedMessage],
+  );
 
   const hasContractAbi = Boolean(contractInfo?.abi);
 
@@ -457,8 +517,11 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
         loadStatistics(),
       ]);
 
-      setCapsules(ownCapsules);
-      setAllCapsules(allCapsulesList);
+      const restoredOwnCapsules = ownCapsules.map(restoreStoredDecryptedMessage);
+      const restoredAllCapsules = allCapsulesList.map(restoreStoredDecryptedMessage);
+
+      setCapsules(restoredOwnCapsules);
+      setAllCapsules(restoredAllCapsules);
       setStatistics(stats);
     } catch (error) {
       console.error("Failed to refresh capsules", error);
@@ -467,7 +530,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       setIsLoading(false);
       window.dispatchEvent(new CustomEvent("fhe-capsule-loading", { detail: { finishedAt: Date.now() } }));
     }
-  }, [fetchAllCapsules, fetchOwnCapsules, hasContract, loadStatistics, resetMessages]);
+  }, [fetchAllCapsules, fetchOwnCapsules, hasContract, loadStatistics, resetMessages, restoreStoredDecryptedMessage]);
 
   useWatchContractEvent({
     address: hasContract ? (contractInfo!.address as `0x${string}`) : undefined,
@@ -508,6 +571,25 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     },
     enabled: Boolean(hasContract),
   });
+
+  useEffect(() => {
+    if (hasPrefetchedSignatureRef.current) return;
+    if (!instance || !ethersSigner || !contractAddress) return;
+    if (fheStatus !== "ready") return;
+
+    hasPrefetchedSignatureRef.current = true;
+
+    const run = async () => {
+      try {
+        await FhevmDecryptionSignature.loadOrSign(instance, [contractAddress], ethersSigner, decryptSignatureStorage);
+      } catch (error) {
+        console.warn("Failed to prefetch FHE decrypt signature", error);
+        hasPrefetchedSignatureRef.current = false;
+      }
+    };
+
+    void run();
+  }, [contractAddress, decryptSignatureStorage, ethersSigner, fheStatus, instance]);
 
   const requestDecryptCapsule = useCallback(
     (capsuleId: number, options: { skipLockCheck?: boolean } = {}) => {
@@ -803,6 +885,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     const capsule = getCapsuleById(activeDecryptCapsuleId);
     if (!capsule) {
       autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
+      persistDecryptedMessage(activeDecryptCapsuleId, undefined);
       updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
       setActiveDecryptCapsuleId(null);
       setDecryptRequests([]);
@@ -812,12 +895,14 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
 
     const decoded = decodeMessageFromResults(capsule.handles.message, normalizedDecryptResults);
     if (decoded) {
+      persistDecryptedMessage(activeDecryptCapsuleId, decoded);
       updateCapsulePartial(activeDecryptCapsuleId, {
         decryptedMessage: decoded,
         pendingManualDecrypt: false,
       });
       setStatusMessage("Capsule decrypted.");
     } else {
+      persistDecryptedMessage(activeDecryptCapsuleId, undefined);
       updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
       setErrorMessage("Failed to decrypt capsule message.");
     }
@@ -830,6 +915,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     activeDecryptCapsuleId,
     getCapsuleById,
     normalizedDecryptResults,
+    persistDecryptedMessage,
     updateCapsulePartial,
   ]);
 
