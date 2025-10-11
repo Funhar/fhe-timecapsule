@@ -67,6 +67,8 @@ export const TimeCapsuleApp = () => {
   } = useFHETimeCapsule();
 
   const isActuallySubmitting = isSubmitting || isFormSubmitting;
+  const MAX_MESSAGE_LENGTH = 255;
+  const remainingCharacters = MAX_MESSAGE_LENGTH - message.length;
 
   const hasCapsules = useMemo(() => capsules.length > 0, [capsules]);
   const otherCapsules = useMemo(() => allCapsules.filter(capsule => !capsule.isOwn), [allCapsules]);
@@ -223,8 +225,17 @@ export const TimeCapsuleApp = () => {
                   value={message}
                   onChange={event => setMessage(event.target.value)}
                   disabled={!canCreate || isActuallySubmitting}
+                  maxLength={MAX_MESSAGE_LENGTH}
                   required
                 />
+                <div className="rounded-lg border border-amber-400/70 bg-amber-500/15 px-3 py-2 text-[11px] text-amber-100">
+                  <div className="flex items-center justify-between">
+                    <span>Longer messages take more time to encrypt. Keep it concise for faster submission.</span>
+                    <span className={remainingCharacters < 0 ? "text-rose-200 font-semibold" : "text-amber-200"}>
+                      {remainingCharacters >= 0 ? `${remainingCharacters} left` : `${-remainingCharacters} over`}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
                 <label
