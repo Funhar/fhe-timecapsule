@@ -5,7 +5,7 @@ import { useAccount, useWatchContractEvent } from "wagmi";
 import { ethers } from "ethers";
 import type { InterfaceAbi } from "ethers";
 import type { Abi } from "viem";
-import { FhevmDecryptionSignature, useFhevm, useFHEDecrypt, useFHEEncryption } from "@fhevm-sdk";
+import { FhevmDecryptionSignature, useFhevm, useFHEDecrypt, useFHEEncryption } from "fhevm-sdk";
 import { useDeployedContractInfo } from "../helper";
 import { useWagmiEthers } from "../wagmi/useWagmiEthers";
 import type { Contract } from "~~/utils/helper/contract";

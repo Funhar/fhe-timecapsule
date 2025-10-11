@@ -1,4 +1,4 @@
-import { GenericStringStorage } from "@fhevm-sdk";
+import { GenericStringStorage } from "fhevm-sdk";
 
 /**
  * Generic string storage implementation backed by browser localStorage.
