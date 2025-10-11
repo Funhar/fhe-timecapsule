@@ -488,8 +488,8 @@ const CapsuleCard = ({
 }) => {
   const relative = formatRelativeTime(capsule.unlockDate, capsule.isExpired);
   const truncatedMessage =
-    capsule.decryptedMessage && capsule.decryptedMessage.length > 80
-      ? `${capsule.decryptedMessage.slice(0, 77)}...`
+    capsule.decryptedMessage && capsule.decryptedMessage.length > 160
+      ? `${capsule.decryptedMessage.slice(0, 157)}...`
       : capsule.decryptedMessage ?? undefined;
 
   const messagePreview = truncatedMessage
@@ -508,15 +508,15 @@ const CapsuleCard = ({
     capsule.handles.message.length > 0 ? capsule.handles.message.slice(0, 4).join("\n") : "No ciphertext stored.";
   const remainingChunks = capsule.handles.message.length - Math.min(capsule.handles.message.length, 4);
   const encryptedFooter = remainingChunks > 0 ? `\n...and ${remainingChunks} more chunk(s)` : "";
-  const decryptAccessLabel = capsule.allowDecrypt
-    ? capsule.decryptedMessage
-      ? "Decrypted"
-      : capsule.pendingManualDecrypt || isDecrypting
+  const decryptAccessLabel = capsule.decryptedMessage
+    ? "Decrypted"
+    : capsule.allowDecrypt
+      ? capsule.pendingManualDecrypt || isDecrypting
         ? "Decrypting…"
         : canDecrypt
           ? "Ready to decrypt"
           : "FHE setup required"
-    : "Locked";
+      : "Locked";
 
   return (
     <article className="rounded-xl border border-white/10 bg-white/6 p-5 shadow-[0_25px_60px_-40px_rgba(10,10,15,0.8)] transition hover:-translate-y-[3px] hover:border-white/25">
