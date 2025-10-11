@@ -247,51 +247,60 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       requests: decryptRequests,
     });
 
-  const getDecryptedStorageKey = useCallback(
+  const getDecryptedStorageKeys = useCallback(
     (capsuleId: number) => {
       if (typeof window === "undefined") return undefined;
       if (!contractAddress) return undefined;
-      if (!resolvedAccount) return undefined;
-
-      return [
+      const baseParts: (string | number)[] = [
         "fhe-timecapsule",
         "decrypted-message",
-        resolvedAccount,
         chainId ?? "unknown-chain",
         contractAddress,
         capsuleId,
-      ].join(":");
+      ];
+      const publicKey = baseParts.join(":");
+      const accountKey = resolvedAccount ? [...baseParts, resolvedAccount].join(":") : undefined;
+      return { publicKey, accountKey };
     },
     [chainId, contractAddress, resolvedAccount],
   );
 
   const persistDecryptedMessage = useCallback(
     (capsuleId: number, message: string | undefined) => {
-      const key = getDecryptedStorageKey(capsuleId);
-      if (!key) return;
+      const keys = getDecryptedStorageKeys(capsuleId);
+      if (!keys) return;
       try {
+        const { publicKey, accountKey } = keys;
         if (message) {
-          window.localStorage.setItem(key, message);
+          window.localStorage.setItem(publicKey, message);
+          if (accountKey) {
+            window.localStorage.setItem(accountKey, message);
+          }
         } else {
-          window.localStorage.removeItem(key);
+          window.localStorage.removeItem(publicKey);
+          if (accountKey) {
+            window.localStorage.removeItem(accountKey);
+          }
         }
       } catch (error) {
         console.warn("Failed to persist decrypted capsule message", error);
       }
     },
-    [getDecryptedStorageKey],
+    [getDecryptedStorageKeys],
   );
 
   const restoreStoredDecryptedMessage = useCallback(
     (capsule: CapsuleDetails) => {
-      const key = getDecryptedStorageKey(capsule.id);
-      if (!key) return capsule;
+      const keys = getDecryptedStorageKeys(capsule.id);
+      if (!keys) return capsule;
       if (!capsule.allowDecrypt) {
         persistDecryptedMessage(capsule.id, undefined);
         return capsule;
       }
       try {
-        const stored = window.localStorage.getItem(key);
+        const { publicKey, accountKey } = keys;
+        const storedAccount = accountKey ? window.localStorage.getItem(accountKey) : null;
+        const stored = storedAccount ?? window.localStorage.getItem(publicKey);
         if (stored && stored.length > 0) {
           return { ...capsule, decryptedMessage: stored };
         }
@@ -300,7 +309,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       }
       return capsule;
     },
-    [getDecryptedStorageKey, persistDecryptedMessage],
+    [getDecryptedStorageKeys, persistDecryptedMessage],
   );
 
   const hasContractAbi = Boolean(contractInfo?.abi);
