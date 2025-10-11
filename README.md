@@ -1,170 +1,188 @@
-# FHEVM React Template
+# 🔐 FHE Time Capsule
 
-A minimal React frontend template for building FHEVM-enabled decentralized applications (dApps). This template provides a simple development interface for interacting with FHEVM smart contracts, specifically the `FHECounter.sol` contract.
+**Encrypted memories sealed on-chain, unlocked in the future.**
 
-## 🚀 What is FHEVM?
+[![FHE](https://img.shields.io/badge/Powered%20by-FHEVM-blue?style=for-the-badge&logo=ethereum)](https://docs.zama.ai/protocol/)
+[![Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Solidity](https://img.shields.io/badge/Smart%20Contract-Solidity-gray?style=for-the-badge&logo=solidity)](https://soliditylang.org/)
 
-FHEVM (Fully Homomorphic Encryption Virtual Machine) enables computation on encrypted data directly on Ethereum. This template demonstrates how to build dApps that can perform computations while keeping data private.
+## 🌟 Overview
 
-## ✨ Features
+<div align="center">
+  <img src="preview.png" alt="FHE Time Capsule Application Preview" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
+</div>
 
-- **🔐 FHEVM Integration**: Built-in support for fully homomorphic encryption
-- **⚛️ React + Next.js**: Modern, performant frontend framework
-- **🎨 Tailwind CSS**: Utility-first styling for rapid UI development
-- **🔗 RainbowKit**: Seamless wallet connection and management
-- **🌐 Multi-Network Support**: Works on both Sepolia testnet and local Hardhat node
-- **📦 Monorepo Structure**: Organized packages for SDK, contracts, and frontend
+FHE Time Capsule is a revolutionary decentralized application that combines **Fully Homomorphic Encryption (FHE)** with blockchain technology to create truly private, time-locked messages. Write your thoughts today, encrypt them with military-grade cryptography, and set them free to be discovered in the future.
 
-## 📋 Prerequinextjss
+### ✨ Key Features
 
-Before you begin, ensure you have:
+- 🔐 **Zero-Knowledge Encryption**: Messages are encrypted before hitting the blockchain
+- ⏰ **Time-Locked Capsules**: Set precise unlock times for future revelation
+- 🌐 **Decentralized Storage**: All data stored on-chain with smart contract security
+- 👥 **Community Discovery**: Browse and decrypt publicly shared capsules
+- 🎨 **Beautiful Interface**: Modern, responsive design built with Next.js & Tailwind CSS
 
-- **Node.js** (v18 or higher)
-- **pnpm** package manager
-- **MetaMask** browser extension
-- **Git** for cloning the repository
+## 🏗️ Architecture
 
-## 🛠️ Quick Start
+### Smart Contract (`FHETimeCapsule.sol`)
 
-### 1. Clone and Setup
+The heart of the application is a sophisticated Solidity smart contract that leverages **FHEVM** technology:
+
+```solidity
+// Core contract features
+- Encrypted message storage with chunked data handling
+- Time-based unlock mechanisms with plaintext scheduling
+- FHE permission management for controlled decryption
+- Multi-user capsule management and access control
+- Comprehensive event logging for transparency
+```
+
+**Key Capabilities:**
+- **Encrypted Storage**: Messages stored as encrypted chunks using `euint256[]`
+- **Dual State Management**: Both plaintext (for scheduling) and encrypted (for security) state tracking
+- **Permission-Based Decryption**: Granular access control using FHE permissions
+- **Batch Operations**: Efficient handling of large messages through chunking
+
+### Frontend Application
+
+Built with modern web technologies for seamless user experience:
+
+- **⚛️ React 18** with TypeScript for type-safe development
+- **🎨 Tailwind CSS** for responsive, beautiful UI design
+- **🌈 RainbowKit** for wallet connection and network management
+- **📦 Wagmi** for efficient blockchain interactions
+- **🔄 Real-time Updates** with live capsule status monitoring
+
+**User Interface Highlights:**
+- Intuitive capsule creation with live character counting
+- Real-time encryption status and progress indicators
+- Community capsule discovery and browsing
+- Responsive design that works on all devices
+- Dark theme optimized for developer experience
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js 20+** and **pnpm** package manager
+- **MetaMask** browser extension for wallet connectivity
+- **Git** for repository cloning
+
+### Installation & Setup
 
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd fhevm-react-template
+cd fhe-time-capsule
 
-# Initialize submodules (includes fhevm-hardhat-template)
+# Initialize submodules (includes FHEVM dependencies)
 git submodule update --init --recursive
 
-# Install dependencies
+# Install all dependencies
 pnpm install
+
+# Build the FHEVM SDK
+pnpm sdk:build
 ```
 
-### 2. Environment Configuration
+### Development Environment
 
-Set up your Hardhat environment variables by following the [FHEVM documentation](https://docs.zama.ai/protocol/solidity-guides/getting-started/setup#set-up-the-hardhat-configuration-variables-optional):
-
-- `MNEMONIC`: Your wallet mnemonic phrase
-- `INFURA_API_KEY`: Your Infura API key for Sepolia
-
-### 3. Start Development Environment
-
-**Option A: Local Development (Recommended for testing)**
+**Sepolia Testnet Deployment**
 
 ```bash
-# Terminal 1: Start local Hardhat node
-pnpm chain
-# RPC URL: http://127.0.0.1:8545 | Chain ID: 31337
-
-# Terminal 2: Deploy contracts to localhost
-pnpm deploy:localhost
-
-# Terminal 3: Start the frontend
-pnpm start
-```
-
-**Option B: Sepolia Testnet**
-
-```bash
-# Deploy to Sepolia testnet
+# Deploy contracts to Sepolia testnet
 pnpm deploy:sepolia
 
-# Start the frontend
+# Start the development server
 pnpm start
 ```
 
-### 4. Connect MetaMask
+### 🔗 Connect Your Wallet
 
 1. Open [http://localhost:3000](http://localhost:3000) in your browser
 2. Click "Connect Wallet" and select MetaMask
-3. If using localhost, add the Hardhat network to MetaMask:
-   - **Network Name**: Hardhat Local
-   - **RPC URL**: `http://127.0.0.1:8545`
-   - **Chain ID**: `31337`
-   - **Currency Symbol**: `ETH`
+3. Switch to the Sepolia testnet in your MetaMask wallet
 
-### ⚠️ Sepolia Production note
+## 💡 How It Works
 
-- In production, `NEXT_PUBLIC_ALCHEMY_API_KEY` must be set (see `packages/nextjs/scaffold.config.ts`). The app throws if missing.
-- Ensure `packages/nextjs/contracts/deployedContracts.ts` points to your live contract addresses.
-- Optional: set `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` for better WalletConnect reliability.
-- Optional: add per-chain RPCs via `rpcOverrides` in `packages/nextjs/scaffold.config.ts`.
+### 1. **Message Creation**
+- Write your message in the intuitive interface
+- Choose a future unlock date and time
+- Your message is encrypted client-side before blockchain submission
 
-## 🔧 Troubleshooting
+### 2. **Encrypted Storage**
+- Message is split into encrypted chunks using FHE
+- Each chunk stored as `euint256` on the smart contract
+- Unlock time recorded both as plaintext (for scheduling) and encrypted (for verification)
 
-### Common MetaMask + Hardhat Issues
+### 3. **Time-Locked Security**
+- Capsules remain locked until the specified unlock time
+- Smart contract enforces time-based access control
+- No one can decrypt the message before the unlock time
 
-When developing with MetaMask and Hardhat, you may encounter these common issues:
+### 4. **Secure Revelation**
+- At unlock time, capsules become available for decryption
+- FHE permissions allow controlled access to encrypted content
+- Messages revealed only to authorized parties
 
-#### ❌ Nonce Mismatch Error
+## 🔧 Technical Deep Dive
 
-**Problem**: MetaMask tracks transaction nonces, but when you restart Hardhat, the node resets while MetaMask doesn't update its tracking.
+### FHEVM Integration
 
-**Solution**:
-1. Open MetaMask extension
-2. Select the Hardhat network
-3. Go to **Settings** → **Advanced**
-4. Click **"Clear Activity Tab"** (red button)
-5. This resets MetaMask's nonce tracking
+The application leverages **FHEVM** (Fully Homomorphic Encryption Virtual Machine) to enable computation on encrypted data:
 
-#### ❌ Cached View Function Results
+- **Client-Side Encryption**: Messages encrypted before blockchain submission
+- **Homomorphic Operations**: Smart contract can perform operations on ciphertexts
+- **Decryption Keys**: Managed through secure FHE permission system
+- **Relayer Network**: Off-chain computation for complex cryptographic operations
 
-**Problem**: MetaMask caches smart contract view function results. After restarting Hardhat, you may see outdated data.
+### Smart Contract Architecture
 
-**Solution**:
-1. **Restart your entire browser** (not just refresh the page)
-2. MetaMask's cache is stored in extension memory and requires a full browser restart to clear
-
-> 💡 **Pro Tip**: Always restart your browser after restarting Hardhat to avoid cache issues.
-
-For more details, see the [MetaMask development guide](https://docs.metamask.io/wallet/how-to/run-devnet/).
-
-## 📁 Project Structure
-
-This template uses a monorepo structure with three main packages:
-
-```
-fhevm-react-template/
-├── packages/
-│   ├── fhevm-hardhat-template/    # Smart contracts & deployment
-│   ├── fhevm-sdk/                 # FHEVM SDK package
-│   └── nextjs/                      # React frontend application
-└── scripts/                       # Build and deployment scripts
+```solidity
+struct TimeCapsule {
+    euint256[] encryptedMessage;    // Encrypted message chunks
+    euint64 encryptedUnlockTime;    // Encrypted unlock timestamp
+    ebool encryptedIsActive;        // Encrypted active state
+    eaddress encryptedCreator;      // Encrypted creator address
+    // ... plaintext mirrors for gas efficiency
+}
 ```
 
-### Key Components
+### Security Model
 
-#### 🔗 FHEVM Integration (`packages/nextjs/hooks/fhecounter-example/`)
-- **`useFHECounterWagmi.tsx`**: Example hook demonstrating FHEVM contract interaction
-- Essential hooks for FHEVM-enabled smart contract communication
-- Easily copyable to any FHEVM + React project
+- **End-to-End Encryption**: Messages encrypted before leaving user device
+- **Zero-Knowledge Proofs**: Cryptographic proofs verify operations without revealing data
+- **Time-Based Access Control**: Mathematical enforcement of unlock schedules
+- **Permission Delegation**: Granular control over who can decrypt capsules
 
-#### 🎣 Wallet Management (`packages/nextjs/hooks/helper/`)
-- MetaMask wallet provider hooks
-- Compatible with EIP-6963 standard
-- Easily adaptable for other wallet providers
+## 📊 Project Structure
 
-#### 🔧 Flexibility
-- Replace `ethers.js` with `Wagmi` or other React-friendly libraries
-- Modular architecture for easy customization
-- Support for multiple wallet providers
+```
+fhe-time-capsule/
+├── 📦 packages/
+│   ├── 🔗 fhevm-sdk/           # FHEVM SDK and utilities
+│   ├── ⚖️ hardhat/             # Smart contracts & deployment
+│   └── ⚛️ nextjs/              # React frontend application
+├── 🔧 scripts/                 # Build and deployment automation
+└── 📚 README.md               # Project documentation
+```
 
-## 📚 Additional Resources
+## 🌐 Network Support
+
+- **Testnet**: Sepolia testnet
+- **Multi-Network Ready**: Easy configuration for additional networks
+
+##  Resources & Documentation
 
 ### Official Documentation
 - [FHEVM Documentation](https://docs.zama.ai/protocol/solidity-guides/) - Complete FHEVM guide
-- [FHEVM Hardhat Guide](https://docs.zama.ai/protocol/solidity-guides/development-guide/hardhat) - Hardhat integration
-- [Relayer SDK Documentation](https://docs.zama.ai/protocol/relayer-sdk-guides/) - SDK reference
-- [Environment Setup](https://docs.zama.ai/protocol/solidity-guides/getting-started/setup#set-up-the-hardhat-configuration-variables-optional) - MNEMONIC & API keys
+- [Next.js Documentation](https://nextjs.org/docs) - Frontend framework reference
+- [Solidity Documentation](https://docs.soliditylang.org/) - Smart contract language
 
 ### Development Tools
-- [MetaMask + Hardhat Setup](https://docs.metamask.io/wallet/how-to/run-devnet/) - Local development
-- [React Documentation](https://reactjs.org/) - React framework guide
+- [Hardhat Documentation](https://hardhat.org/docs) - Ethereum development environment
+- [Wagmi Documentation](https://wagmi.sh/) - React hooks for Ethereum
+- [RainbowKit Documentation](https://www.rainbowkit.com/docs) - Wallet connection library
 
 ### Community & Support
-- [FHEVM Discord](https://discord.com/invite/zama) - Community support
-- [GitHub Issues](https://github.com/zama-ai/fhevm-react-template/issues) - Bug reports & feature requests
-
-## 📄 License
-
-This project is licensed under the **BSD-3-Clause-Clear License**. See the [LICENSE](LICENSE) file for details.
+- [Discord Zama Community](https://discord.gg/zama) - Get help and connect with other developers
