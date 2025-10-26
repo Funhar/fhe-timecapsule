@@ -6,7 +6,7 @@ import { getMetadata } from "~~/utils/helper/getMetadata";
 
 export const metadata = getMetadata({
   title: "FHE Time Capsule",
-  description: "Create and unlock encrypted time capsules powered by FHEVM and Chainlink automation.",
+  description: "Create and unlock encrypted time capsules powered by Fully Homomorphic Encryption (FHE) and blockchain technology.",
 });
 
 const DappWrapper = ({ children }: { children: React.ReactNode }) => {

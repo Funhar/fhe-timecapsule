@@ -6,13 +6,23 @@
 [![Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Solidity](https://img.shields.io/badge/Smart%20Contract-Solidity-gray?style=for-the-badge&logo=solidity)](https://soliditylang.org/)
 
+> **Author:** Funhar
+>
+> **Repository:** [https://github.com/Funhar/fhe-timecapsule](https://github.com/Funhar/fhe-timecapsule)
+>
+> **Issues:** [https://github.com/Funhar/fhe-timecapsule/issues](https://github.com/Funhar/fhe-timecapsule/issues)
+
+[![FHE](https://img.shields.io/badge/Powered%20by-FHEVM-blue?style=for-the-badge&logo=ethereum)](https://docs.zama.ai/protocol/)
+[![Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Solidity](https://img.shields.io/badge/Smart%20Contract-Solidity-gray?style=for-the-badge&logo=solidity)](https://soliditylang.org/)
+
 ## 🌟 Overview
 
 <div align="center">
   <img src="preview.png" alt="FHE Time Capsule Application Preview" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
 </div>
 
-FHE Time Capsule is a revolutionary decentralized application that combines **Fully Homomorphic Encryption (FHE)** with blockchain technology to create truly private, time-locked messages. Write your thoughts today, encrypt them with military-grade cryptography, and set them free to be discovered in the future.
+FHE Time Capsule is a revolutionary decentralized application that combines **Fully Homomorphic Encryption (FHE)** with blockchain technology to create truly private, time-locked messages. Create and unlock encrypted time capsules powered by FHE and blockchain technology.
 
 ### ✨ Key Features
 

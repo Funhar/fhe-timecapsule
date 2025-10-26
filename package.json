@@ -1,8 +1,31 @@
 {
-  "name": "root",
+  "name": "fhe-time-capsule",
   "version": "0.4.0",
+  "description": "Encrypted time capsule application powered by Fully Homomorphic Encryption (FHE) and blockchain technology",
+  "author": "Funhar",
   "private": true,
   "license": "BSD-3-Clause-Clear",
+  "keywords": [
+    "fhe",
+    "time-capsule",
+    "blockchain",
+    "encryption",
+    "smart-contracts",
+    "nextjs",
+    "solidity",
+    "fhevm",
+    "zama",
+    "ethereum",
+    "dapp"
+  ],
+  "homepage": "https://github.com/Funhar/fhe-timecapsule#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Funhar/fhe-timecapsule.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Funhar/fhe-timecapsule/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
   },

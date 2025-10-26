@@ -1,7 +1,28 @@
 {
   "name": "site",
   "version": "0.1.0",
+  "description": "Create and unlock encrypted time capsules powered by Fully Homomorphic Encryption (FHE) and blockchain technology",
+  "author": "Funhar",
   "private": true,
+  "keywords": [
+    "nextjs",
+    "react",
+    "fhe",
+    "time-capsule",
+    "blockchain",
+    "dapp",
+    "web3",
+    "typescript",
+    "tailwindcss"
+  ],
+  "homepage": "https://github.com/Funhar/fhe-timecapsule#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Funhar/fhe-timecapsule.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Funhar/fhe-timecapsule/issues"
+  },
   "scripts": {
     "build": "next build",
     "check-types": "tsc --noEmit --incremental",

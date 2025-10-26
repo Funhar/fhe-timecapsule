@@ -1,7 +1,27 @@
 {
   "name": "fhevm-sdk",
   "version": "0.1.0",
+  "description": "FHEVM SDK for encrypted blockchain operations and React hooks",
+  "author": "Funhar",
   "private": true,
+  "keywords": [
+    "fhevm",
+    "fhe",
+    "sdk",
+    "blockchain",
+    "encryption",
+    "react",
+    "typescript",
+    "zama"
+  ],
+  "homepage": "https://github.com/Funhar/fhe-timecapsule#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Funhar/fhe-timecapsule.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Funhar/fhe-timecapsule/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
