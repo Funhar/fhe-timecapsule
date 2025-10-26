@@ -96,9 +96,9 @@ export const TimeCapsuleApp = () => {
         accent: "text-emerald-500",
       },
       {
-        label: "Unlocking Soon",
+        label: "Ready to Open",
         value: statistics ? Number(statistics.expiredCapsules) : 0,
-        description: "Expired or about to unlock",
+        description: "Capsules ready for opening",
         icon: "✨",
         accent: "text-indigo-500",
       },
@@ -164,7 +164,7 @@ export const TimeCapsuleApp = () => {
               <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
                 <span className="block">Keep your message sealed, choose when it unlocks, and pin it on-chain.</span>
                 <span className="block">
-                  When the timer ends the capsule unlocks automatically—or manually, if you prefer.
+                  When the timer ends, you can unlock the capsule and read your message.
                 </span>
               </p>
             </div>

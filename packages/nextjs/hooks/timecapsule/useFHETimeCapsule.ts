@@ -232,7 +232,6 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const autoDecryptRequestedRef = useRef<Set<number>>(new Set());
   const hasPrefetchedSignatureRef = useRef<boolean>(false);
   const resolvedAccount = account?.toLowerCase();
 
@@ -653,38 +652,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     ],
   );
 
-  useEffect(() => {
-    const activeIds = new Set<number>();
-    const evaluateCapsules = (list: readonly CapsuleDetails[]) => {
-      for (const capsule of list) {
-        activeIds.add(capsule.id);
-        if (!capsule.isOwn) continue;
-        if (!capsule.allowDecrypt) {
-          autoDecryptRequestedRef.current.delete(capsule.id);
-          continue;
-        }
-        if (capsule.decryptedMessage || capsule.pendingManualDecrypt) {
-          continue;
-        }
-        if (!autoDecryptRequestedRef.current.has(capsule.id)) {
-          autoDecryptRequestedRef.current.add(capsule.id);
-          const scheduled = requestDecryptCapsule(capsule.id, { skipLockCheck: true });
-          if (!scheduled) {
-            autoDecryptRequestedRef.current.delete(capsule.id);
-          }
-        }
-      }
-    };
-
-    evaluateCapsules(capsules);
-    evaluateCapsules(allCapsules);
-
-    for (const requestedId of Array.from(autoDecryptRequestedRef.current)) {
-      if (!activeIds.has(requestedId)) {
-        autoDecryptRequestedRef.current.delete(requestedId);
-      }
-    }
-  }, [allCapsules, capsules, requestDecryptCapsule]);
+  // Otomatik şifre çözme kaldırıldı - kullanıcı manuel olarak şifre çözme yapmalı
 
   const executeWrite = useCallback(
     async (action: WriteAction): Promise<WriteResult | undefined> => {
@@ -862,7 +830,6 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     if (!decryptError) return;
     setErrorMessage(decryptError);
     if (activeDecryptCapsuleId !== null) {
-      autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
       updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
       setActiveDecryptCapsuleId(null);
     }
@@ -893,7 +860,6 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
 
     const capsule = getCapsuleById(activeDecryptCapsuleId);
     if (!capsule) {
-      autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
       persistDecryptedMessage(activeDecryptCapsuleId, undefined);
       updateCapsulePartial(activeDecryptCapsuleId, { pendingManualDecrypt: false });
       setActiveDecryptCapsuleId(null);
@@ -916,7 +882,6 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
       setErrorMessage("Failed to decrypt capsule message.");
     }
 
-    autoDecryptRequestedRef.current.delete(activeDecryptCapsuleId);
     setActiveDecryptCapsuleId(null);
     setDecryptRequests([]);
     setHandledDecryptKey("");
