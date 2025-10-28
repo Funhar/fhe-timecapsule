@@ -50,7 +50,7 @@ export const TimeCapsuleApp = () => {
     allCapsules,
     statistics,
     isLoading,
-    isSubmitting,
+    isCreating,
     isDecrypting,
     statusMessage,
     decryptStatusMessage,
@@ -66,7 +66,7 @@ export const TimeCapsuleApp = () => {
     decryptCapsule,
   } = useFHETimeCapsule();
 
-  const isActuallySubmitting = isSubmitting || isFormSubmitting;
+  const isActuallySubmitting = isCreating || isFormSubmitting;
   const MAX_MESSAGE_LENGTH = 255;
   const remainingCharacters = MAX_MESSAGE_LENGTH - message.length;
 

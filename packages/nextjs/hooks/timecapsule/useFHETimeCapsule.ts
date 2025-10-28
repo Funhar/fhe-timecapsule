@@ -230,6 +230,9 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   const [activeDecryptCapsuleId, setActiveDecryptCapsuleId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [isOpening, setIsOpening] = useState<boolean>(false);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const hasPrefetchedSignatureRef = useRef<boolean>(false);
@@ -676,6 +679,7 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
         let tx;
         switch (action.type) {
           case "create": {
+            setIsCreating(true);
             if (!action.message.trim()) {
               setErrorMessage("Message cannot be empty.");
               return undefined;
@@ -735,11 +739,13 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
             break;
           }
           case "cancel": {
+            setIsCancelling(true);
             setStatusMessage(`Cancelling capsule #${action.capsuleId}...`);
             tx = await writeContract.cancelTimeCapsule(BigInt(action.capsuleId));
             break;
           }
           case "open": {
+            setIsOpening(true);
             setStatusMessage(`Opening capsule #${action.capsuleId}...`);
             tx = await writeContract.openTimeCapsule(BigInt(action.capsuleId));
             break;
@@ -761,6 +767,9 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
         return undefined;
       } finally {
         setIsSubmitting(false);
+        setIsCreating(false);
+        setIsOpening(false);
+        setIsCancelling(false);
       }
     },
     [canEncrypt, contractAddress, encryptWith, getContract, hasContract, hasSigner, resetMessages],
@@ -894,13 +903,13 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
   ]);
 
   const canCreate = useMemo(
-    () => Boolean(isConnected && hasSigner && hasContract && !isSubmitting && canEncrypt),
-    [canEncrypt, hasContract, hasSigner, isConnected, isSubmitting],
+    () => Boolean(isConnected && hasSigner && hasContract && !isCreating && canEncrypt),
+    [canEncrypt, hasContract, hasSigner, isConnected, isCreating],
   );
 
   const canMutateCapsule = useMemo(
-    () => Boolean(isConnected && hasSigner && hasContract && !isSubmitting),
-    [hasContract, hasSigner, isConnected, isSubmitting],
+    () => Boolean(isConnected && hasSigner && hasContract && !isOpening && !isCancelling),
+    [hasContract, hasSigner, isConnected, isOpening, isCancelling],
   );
 
   return {
@@ -910,6 +919,9 @@ export const useFHETimeCapsule = (params: UseFHETimeCapsuleParams = {}) => {
     statistics,
     isLoading,
     isSubmitting,
+    isCreating,
+    isOpening,
+    isCancelling,
     isDecrypting,
     statusMessage,
     decryptStatusMessage,
